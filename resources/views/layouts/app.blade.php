@@ -124,8 +124,8 @@
                                 $roleRouteMap = [
                                     'Administrateur' => 'admin',
                                     'Proviseur' => 'proviseur',
-                                    'Surveillant_General' => 'surveillant',
-                                    'Operateur_Photo' => 'operateur',
+                                    'Surveillant General' => 'surveillant',
+                                    'Operateur Photo' => 'operateur',
                                 ];
                                 $routePrefix = $roleRouteMap[Auth::user()->role] ?? 'dashboard';
                             @endphp
@@ -174,17 +174,15 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <li class="nav-item">
-    <a class="nav-link {{ request()->is('surveillant/cartes*') ? 'active' : '' }}" href="{{ url('/surveillant/cartes') }}">
-        <i class="fas fa-id-card me-2"></i> Cartes
-    </a>
-</li>
-<li class="nav-item">
-    <a class="nav-link {{ request()->is('surveillant/impression*') ? 'active' : '' }}" href="{{ url('/surveillant/impression') }}">
-        <i class="fas fa-print me-2"></i> Impression
-    </a>
-</li>
-                    
+                                <a class="nav-link {{ request()->routeIs('surveillant.cartes.*') ? 'active' : '' }}" href="{{ route('surveillant.cartes.index') }}">
+                                    <i class="fas fa-id-card me-2"></i> Cartes
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('surveillant.impression.*') ? 'active' : '' }}" href="{{ route('surveillant.impression.index') }}">
+                                    <i class="fas fa-print me-2"></i> Impression
+                                </a>
+                            </li>
                         @endif
 
                         @if(Auth::user()->isOperateur())

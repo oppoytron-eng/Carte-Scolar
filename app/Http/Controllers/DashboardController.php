@@ -169,11 +169,15 @@ class DashboardController extends Controller
         // Statistiques par classe
         $statsParClasse = $this->getStatsParClasse($etablissement->id);
 
+        // Classes pour le dropdown rapport
+        $classes = $etablissement->classes()->orderBy('niveau')->get();
+
         return view('surveillant.dashboard', compact(
             'stats',
             'etablissement',
             'photosEnAttente',
-            'statsParClasse'
+            'statsParClasse',
+            'classes'
         ));
     }
 
@@ -336,6 +340,21 @@ class DashboardController extends Controller
                 ];
             })
             ->toArray();
+    }
+
+    /**
+     * Obtenir les stats du dashboard (API)
+     */
+    public function getStats()
+    {
+        $user = Auth::user();
+        $etablissement = $user->etablissementPrincipal();
+
+        return response()->json([
+            'total_eleves' => $etablissement ? $etablissement->eleves()->count() : Eleve::count(),
+            'total_photos' => Photo::count(),
+            'total_cartes' => CarteScolaire::count(),
+        ]);
     }
 
     /**

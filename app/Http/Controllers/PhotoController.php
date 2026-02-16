@@ -6,7 +6,6 @@ use App\Models\Photo;
 use App\Models\Eleve;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Laravel\Facades\Image;
 use Illuminate\Support\Str;
 
 class PhotoController extends Controller
@@ -95,6 +94,7 @@ class PhotoController extends Controller
         try {
             $photo = $this->traiterPhoto($request->file('photo'), $eleve, $request->methode_capture);
 
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Photo capturée avec succès',
@@ -358,57 +358,75 @@ class PhotoController extends Controller
      */
     private function traiterPhoto($file, Eleve $eleve, string $methode, bool $isTemp = false)
     {
-        // Générer un ID unique pour la photo
         $photoId = 'PHO_' . strtoupper(Str::random(10));
-        $anneeScolaire = $eleve->annee_scolaire;
-
-        // Chemins de stockage
+        $anneeScolaire = $eleve->annee_scolaire ?? date('Y');
         $cheminBase = "photos/{$anneeScolaire}/{$eleve->etablissement_id}";
-        
-        // Charger l'image
-        if ($isTemp) {
-            $image = Image::read($file);
-        } else {
-            $image = Image::read($file->getRealPath());
-        }
 
-        // Obtenir les dimensions originales
-        $largeur = $image->width();
-        $hauteur = $image->height();
+        // Lire le fichier source
+        $sourcePath = $isTemp ? $file : $file->getRealPath();
+        $imageData = file_get_contents($sourcePath);
+
+        // Obtenir les dimensions
+        $imageInfo = getimagesizefromstring($imageData);
+        $largeur = $imageInfo[0] ?? 640;
+        $hauteur = $imageInfo[1] ?? 480;
 
         // Sauvegarder l'original
         $nomOriginal = "{$photoId}_original.jpg";
         $cheminOriginal = "{$cheminBase}/{$nomOriginal}";
-        Storage::disk('public')->put($cheminOriginal, $image->encodeByMediaType('image/jpeg', quality: 90));
 
-        // Créer une version redimensionnée (pour les cartes)
-        $imageRedim = clone $image;
-        $imageRedim->scale(width: 400);
-        $nomRedim = "{$photoId}_redim.jpg";
-        $cheminRedim = "{$cheminBase}/{$nomRedim}";
-        Storage::disk('public')->put($cheminRedim, $imageRedim->encodeByMediaType('image/jpeg', quality: 85));
+        if (extension_loaded('gd')) {
+            $gdImage = imagecreatefromstring($imageData);
 
-        // Créer une miniature
-        $imageMini = clone $image;
-        $imageMini->scale(width: 150);
-        $nomMini = "{$photoId}_mini.jpg";
-        $cheminMini = "{$cheminBase}/{$nomMini}";
-        Storage::disk('public')->put($cheminMini, $imageMini->encodeByMediaType('image/jpeg', quality: 80));
+            // Sauvegarder l'original en JPEG
+            ob_start();
+            imagejpeg($gdImage, null, 90);
+            $originalJpeg = ob_get_clean();
+            Storage::disk('public')->put($cheminOriginal, $originalJpeg);
 
-        // Calculer la taille du fichier
-        $tailleFichier = Storage::disk('public')->size($cheminOriginal) / 1024; // En KB
+            // Version redimensionnee (400px de large)
+            $redimW = 400;
+            $redimH = intval($hauteur * ($redimW / $largeur));
+            $gdRedim = imagecreatetruecolor($redimW, $redimH);
+            imagecopyresampled($gdRedim, $gdImage, 0, 0, 0, 0, $redimW, $redimH, $largeur, $hauteur);
+            ob_start();
+            imagejpeg($gdRedim, null, 85);
+            $redimJpeg = ob_get_clean();
+            $nomRedim = "{$photoId}_redim.jpg";
+            $cheminRedim = "{$cheminBase}/{$nomRedim}";
+            Storage::disk('public')->put($cheminRedim, $redimJpeg);
+            imagedestroy($gdRedim);
 
-        // Analyse de qualité (simplifié)
-        $scoreQualite = $this->analyserQualite($image, $largeur, $hauteur);
+            // Miniature (150px de large)
+            $miniW = 150;
+            $miniH = intval($hauteur * ($miniW / $largeur));
+            $gdMini = imagecreatetruecolor($miniW, $miniH);
+            imagecopyresampled($gdMini, $gdImage, 0, 0, 0, 0, $miniW, $miniH, $largeur, $hauteur);
+            ob_start();
+            imagejpeg($gdMini, null, 80);
+            $miniJpeg = ob_get_clean();
+            $nomMini = "{$photoId}_mini.jpg";
+            $cheminMini = "{$cheminBase}/{$nomMini}";
+            Storage::disk('public')->put($cheminMini, $miniJpeg);
+            imagedestroy($gdMini);
+            imagedestroy($gdImage);
+        } else {
+            // Fallback sans GD : sauvegarder tel quel
+            Storage::disk('public')->put($cheminOriginal, $imageData);
+            $cheminRedim = $cheminOriginal;
+            $cheminMini = $cheminOriginal;
+        }
 
-        // Créer l'enregistrement
+        $tailleFichier = Storage::disk('public')->size($cheminOriginal) / 1024;
+        $scoreQualite = $this->analyserQualite($largeur, $hauteur);
+
         $photo = Photo::create([
             'photo_id' => $photoId,
             'eleve_id' => $eleve->id,
             'operateur_id' => auth()->id(),
             'chemin_original' => $cheminOriginal,
-            'chemin_redimensionne' => $cheminRedim,
-            'chemin_miniature' => $cheminMini,
+            'chemin_redimensionne' => $cheminRedim ?? $cheminOriginal,
+            'chemin_miniature' => $cheminMini ?? $cheminOriginal,
             'format' => 'jpg',
             'largeur' => $largeur,
             'hauteur' => $hauteur,
@@ -421,30 +439,21 @@ class PhotoController extends Controller
             'version' => 1,
         ]);
 
-        // Logger
-        $this->logAction('create', $photo, "Capture de photo pour {$eleve->nom_complet}");
+        $this->logAction('create', $photo, "Capture de photo pour {$eleve->nom} {$eleve->prenoms}");
 
         return $photo;
     }
 
-    /**
-     * Analyser la qualité d'une photo (simplifié)
-     */
-    private function analyserQualite($image, int $largeur, int $hauteur): int
+    private function analyserQualite(int $largeur, int $hauteur): int
     {
         $score = 100;
-
-        // Pénalité pour résolution trop faible
         if ($largeur < 300 || $hauteur < 400) {
             $score -= 30;
         }
-
-        // Pénalité pour dimensions non proportionnelles (photo portrait attendue)
-        $ratio = $hauteur / $largeur;
+        $ratio = $largeur > 0 ? $hauteur / $largeur : 0;
         if ($ratio < 1.2 || $ratio > 1.5) {
             $score -= 20;
         }
-
         return max(0, $score);
     }
 

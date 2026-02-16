@@ -38,7 +38,7 @@
                                     <strong>N° inscription:</strong> {{ $eleve->numero_inscription ?? 'N/A' }}
                                 </p>
                                 <p class="mb-0">
-                                    <strong>Date naissance:</strong> {{ $eleve->date_naissance->format('d/m/Y') ?? 'N/A' }}
+                                    <strong>Date naissance:</strong> {{ $eleve->date_naissance ? $eleve->date_naissance->format('d/m/Y') : 'N/A' }}
                                 </p>
                             </div>
                         </div>

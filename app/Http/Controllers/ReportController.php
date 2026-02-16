@@ -38,28 +38,24 @@ class ReportController extends Controller
 
     public function classe(Classe $classe)
     {
-        $classe->load('eleves', 'etablissement');
+        $classe->load('eleves.photos', 'eleves.cartesScolaires', 'etablissement');
+
+        $etablissement = $classe->etablissement;
+        $classes = $etablissement ? Classe::where('etablissement_id', $etablissement->id)->orderBy('nom')->get() : collect();
 
         $stats = [
-            'total_eleves' => $classe->eleves()->count(),
-            'eleves_actifs' => $classe->eleves()->where('statut', 'Actif')->count(),
-            'eleves_avec_photo' => $classe->eleves()->whereHas('photos', function ($q) {
-                $q->where('statut', 'Approuvee');
-            })->count(),
-            'eleves_sans_photo' => $classe->eleves()->whereDoesntHave('photos', function ($q) {
-                $q->where('statut', 'Approuvee');
-            })->count(),
-            'cartes_generees' => CarteScolaire::whereHas('eleve', function ($q) use ($classe) {
-                $q->where('classe_id', $classe->id);
-            })->where('statut', 'Carte_generee')->count(),
-            'cartes_distribuees' => CarteScolaire::whereHas('eleve', function ($q) use ($classe) {
-                $q->where('classe_id', $classe->id);
-            })->where('statut', 'Carte_distribuee')->count(),
+            'total_eleves' => $classe->eleves->count(),
+            'eleves_actifs' => $classe->eleves->where('statut', 'Actif')->count(),
+            'eleves_avec_photo' => $classe->eleves->filter(fn($e) => $e->photos->where('statut', 'Approuvee')->count() > 0)->count(),
+            'eleves_sans_photo' => $classe->eleves->filter(fn($e) => $e->photos->where('statut', 'Approuvee')->count() === 0)->count(),
+            'cartes_generees' => $classe->eleves->flatMap->cartesScolaires->where('statut', 'Carte_generee')->count(),
+            'cartes_imprimees' => $classe->eleves->flatMap->cartesScolaires->where('statut', 'Carte_imprimee')->count(),
+            'cartes_distribuees' => $classe->eleves->flatMap->cartesScolaires->where('statut', 'Carte_distribuee')->count(),
         ];
 
-        $eleves = $classe->eleves()->with('photos', 'cartes')->get();
+        $eleves = $classe->eleves;
 
-        return view('surveillant.rapports.classe', compact('classe', 'stats', 'eleves'));
+        return view('surveillant.rapports.classe', compact('classe', 'classes', 'stats', 'eleves'));
     }
 
     public function exportExcel()
@@ -92,7 +88,7 @@ class ReportController extends Controller
 
     public function exportClassePdf(Classe $classe)
     {
-        $classe->load('eleves.photos', 'eleves.cartes');
+        $classe->load('eleves.photos', 'eleves.cartesScolaires');
 
         $stats = [
             'total_eleves' => $classe->eleves()->count(),
@@ -104,6 +100,30 @@ class ReportController extends Controller
 
         $pdf = Pdf::loadView('reports.classe-pdf', compact('classe', 'stats'));
         return $pdf->download('rapport-' . $classe->nom . '-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function proviseur()
+    {
+        $etablissement = auth()->user()->etablissementPrincipal();
+
+        if (!$etablissement) {
+            return redirect()->route('profile')->with('error', 'Aucun établissement assigné.');
+        }
+
+        $stats = [
+            'total_eleves' => Eleve::where('etablissement_id', $etablissement->id)->count(),
+            'eleves_actifs' => Eleve::where('etablissement_id', $etablissement->id)->where('statut', 'Actif')->count(),
+            'total_photos' => Photo::whereHas('eleve', fn($q) => $q->where('etablissement_id', $etablissement->id))->count(),
+            'photos_approuvees' => Photo::whereHas('eleve', fn($q) => $q->where('etablissement_id', $etablissement->id))->where('statut', 'Approuvee')->count(),
+            'total_cartes' => CarteScolaire::where('etablissement_id', $etablissement->id)->count(),
+            'cartes_distribuees' => CarteScolaire::where('etablissement_id', $etablissement->id)->where('statut', 'Carte_distribuee')->count(),
+        ];
+
+        $classes = Classe::where('etablissement_id', $etablissement->id)
+            ->withCount('eleves')
+            ->get();
+
+        return view('proviseur.statistiques', compact('stats', 'classes', 'etablissement'));
     }
 
     public function audit()

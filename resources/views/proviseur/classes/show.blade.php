@@ -63,7 +63,7 @@
                     </div>
                     <div class="col-md-6">
                         <p class="text-muted mb-1"><strong>Créée le</strong></p>
-                        <p>{{ $classe->created_at->format('d/m/Y') ?? 'N/A' }}</p>
+                        <p>{{ $classe->created_at ? $classe->created_at->format('d/m/Y') : 'N/A' }}</p>
                     </div>
                 </div>
             </div>

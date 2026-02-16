@@ -55,7 +55,7 @@
             <tbody>
                 @forelse($audits ?? [] as $audit)
                 <tr>
-                    <td>{{ $audit->created_at->format('d/m/Y H:i:s') ?? 'N/A' }}</td>
+                    <td>{{ $audit->created_at?->format('d/m/Y H:i:s') ?? 'N/A' }}</td>
                     <td>
                         <i class="fas fa-user me-2"></i>
                         {{ $audit->user->full_name ?? 'Système' }}

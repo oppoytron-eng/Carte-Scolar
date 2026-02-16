@@ -6,90 +6,108 @@
 @section('content')
 <div class="row mb-4">
     <div class="col-md-8">
-        <div class="card">
-            <div class="card-header border-bottom bg-light">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fas fa-image me-2"></i>
-                        Photo en validation
-                    </h5>
-                    <small class="text-muted">Photo 1 / 125</small>
+        @if(isset($photosEnAttente) && $photosEnAttente->count() > 0)
+            <form id="bulkForm" action="{{ route('surveillant.photos.bulk-approve') }}" method="POST">
+                @csrf
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-image me-2"></i>Photos en attente de validation</h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleSelectAll()">
+                                <i class="fas fa-check-double me-1"></i>Tout sélectionner
+                            </button>
+                            <button type="submit" class="btn btn-sm btn-success">
+                                <i class="fas fa-check-circle me-1"></i>Approuver la sélection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                @foreach($photosEnAttente as $photo)
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <input type="checkbox" name="photo_ids[]" value="{{ $photo->id }}" class="form-check-input photo-checkbox" style="transform: scale(1.3);">
+                            </div>
+                            <div class="col-auto">
+                                <img src="{{ $photo->photo_miniature_url }}" alt="Photo" class="rounded" width="80" height="100" style="object-fit: cover; cursor: pointer;" onclick="showPhotoModal('{{ $photo->photo_redimensionnee_url }}')">
+                            </div>
+                            <div class="col">
+                                <h6 class="mb-1">{{ $photo->eleve->nom_complet ?? 'N/A' }}</h6>
+                                <small class="text-muted">
+                                    {{ $photo->eleve->classe->nom_complet ?? '' }} |
+                                    Matricule : {{ $photo->eleve->matricule ?? '' }}
+                                </small><br>
+                                <small class="text-muted">
+                                    <i class="fas fa-camera me-1"></i>{{ $photo->methode_capture }} |
+                                    <i class="fas fa-clock me-1"></i>{{ $photo->date_capture?->format('d/m/Y H:i') }} |
+                                    Qualité : {{ $photo->score_qualite_format }}
+                                </small><br>
+                                <small class="text-muted">
+                                    Opérateur : {{ $photo->operateur->full_name ?? 'N/A' }}
+                                </small>
+                            </div>
+                            <div class="col-auto">
+                                <div class="d-flex gap-2">
+                                    <form action="{{ route('surveillant.photos.approve', $photo) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check"></i></button>
+                                    </form>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="showRejectForm({{ $photo->id }})"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </form>
+
+            <div class="d-flex justify-content-center">
+                {{ $photosEnAttente->links() }}
+            </div>
+        @else
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h5>Aucune photo en attente</h5>
+                    <p class="text-muted">Toutes les photos ont été validées.</p>
                 </div>
             </div>
-            <div class="card-body text-center">
-                <div style="background: #f0f0f0; height: 400px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-                    <i class="fas fa-image" style="font-size: 4rem; color: #ccc;"></i>
-                </div>
+        @endif
+    </div>
 
-                <div class="mb-4">
-                    <h6 class="text-muted">Informations élève</h6>
-                    <p class="mb-2">
-                        <strong>Nom:</strong> Alice Dupont<br>
-                        <strong>Classe:</strong> 6ème A<br>
-                        <strong>Numéro:</strong> ALI001
-                    </p>
-                </div>
-
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Critères de validation:</strong>
-                    <ul class="mb-0 mt-2">
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header"><h6 class="mb-0">Critères de validation</h6></div>
+            <div class="card-body">
+                <div class="alert alert-info mb-0">
+                    <ul class="mb-0 small">
                         <li>Photo claire et bien éclairée</li>
                         <li>Visage correctement cadré</li>
                         <li>Pas de lunettes de soleil</li>
                         <li>Fond uni blanc ou gris</li>
+                        <li>Expression neutre</li>
                     </ul>
                 </div>
+            </div>
+        </div>
 
-                <div class="btn-group w-100" role="group">
-                    <button class="btn btn-lg btn-success" onclick="approvePhoto()">
-                        <i class="fas fa-check-circle me-2"></i> Approuver
-                    </button>
-                    <button class="btn btn-lg btn-warning" onclick="showRejectForm()">
-                        <i class="fas fa-times-circle me-2"></i> Rejeter
-                    </button>
-                </div>
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Raccourcis</h6></div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">Utilisez les boutons <span class="badge bg-success"><i class="fas fa-check"></i></span> pour approuver et <span class="badge bg-danger"><i class="fas fa-times"></i></span> pour rejeter individuellement, ou cochez plusieurs photos puis cliquez "Approuver la sélection".</p>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header border-bottom">
-                <h5 class="mb-0">Files à traiter</h5>
-            </div>
-            <div class="card-body">
-                <div class="list-group list-group-flush">
-                    @for($i = 1; $i <= 5; $i++)
-                    <div class="list-group-item px-0 py-2">
-                        <div class="d-flex">
-                            <div style="width: 40px; height: 40px; background: #e9ecef; border-radius: 4px; margin-right: 10px;"></div>
-                            <div>
-                                <p class="mb-1"><strong>Élève {{ $i }}</strong></p>
-                                <small class="text-muted">6ème A</small>
-                            </div>
-                            <span class="badge bg-warning ms-auto">En attente</span>
-                        </div>
-                    </div>
-                    @endfor
-                </div>
-            </div>
-        </div>
-
-        <div class="card mt-3">
-            <div class="card-header border-bottom">
-                <h5 class="mb-0">Statistiques</h5>
-            </div>
-            <div class="card-body">
-                <p class="mb-2">
-                    <strong>Approuvées:</strong> <span class="badge bg-success">42</span>
-                </p>
-                <p class="mb-2">
-                    <strong>Rejetées:</strong> <span class="badge bg-danger">5</span>
-                </p>
-                <p class="mb-2">
-                    <strong>En attente:</strong> <span class="badge bg-warning">78</span>
-                </p>
+<!-- Modal Photo -->
+<div class="modal fade" id="photoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-0">
+                <img id="modalPhoto" class="img-fluid" alt="Photo">
             </div>
         </div>
     </div>
@@ -97,52 +115,44 @@
 
 @push('scripts')
 <script>
-    function approvePhoto() {
-        Swal.fire({
-            title: 'Photo approuvée',
-            text: 'La photo a été validée avec succès.',
-            icon: 'success'
-        }).then(() => {
-            location.reload();
-        });
-    }
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.photo-checkbox');
+    const allChecked = [...checkboxes].every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+}
 
-    function showRejectForm() {
-        Swal.fire({
-            title: 'Rejeter la photo',
-            html: `
-                <div class="mb-3">
-                    <label class="form-label">Raison du rejet</label>
-                    <select class="form-select" id="rejectReason">
-                        <option value="">-- Sélectionnez une raison --</option>
-                        <option value="mauvaise_qualite">Mauvaise qualité</option>
-                        <option value="mal_cadre">Mal cadrée</option>
-                        <option value="mauvais_eclairage">Mauvais éclairage</option>
-                        <option value="lunettes_soleil">Lunettes de soleil</option>
-                        <option value="autre">Autre</option>
-                    </select>
+function showPhotoModal(url) {
+    document.getElementById('modalPhoto').src = url;
+    new bootstrap.Modal(document.getElementById('photoModal')).show();
+}
+
+function showRejectForm(photoId) {
+    Swal.fire({
+        title: 'Rejeter la photo',
+        html: `
+            <form id="rejectForm" action="/surveillant/photos/${photoId}/reject" method="POST">
+                <input type="hidden" name="_token" value="${document.querySelector('meta[name=csrf-token]').content}">
+                <div class="mb-3 text-start">
+                    <label class="form-label fw-bold">Motif du rejet</label>
+                    <textarea class="form-control" name="motif_rejet" rows="3" required placeholder="Ex: Photo floue, mauvais éclairage..."></textarea>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Commentaire</label>
-                    <textarea class="form-control" id="rejectComment" rows="3"></textarea>
-                </div>
-            `,
-            confirmButtonText: 'Rejeter',
-            showCancelButton: true,
-            preConfirm: () => {
-                const reason = document.getElementById('rejectReason').value;
-                const comment = document.getElementById('rejectComment').value;
-                if (!reason) {
-                    Swal.showValidationMessage('Veuillez sélectionner une raison');
-                }
-                return { reason, comment };
+            </form>
+        `,
+        confirmButtonText: 'Rejeter',
+        confirmButtonColor: '#EF4444',
+        showCancelButton: true,
+        cancelButtonText: 'Annuler',
+        preConfirm: () => {
+            const motif = document.querySelector('#rejectForm textarea').value;
+            if (!motif.trim()) {
+                Swal.showValidationMessage('Veuillez indiquer un motif');
+                return false;
             }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire('Photo rejetée', 'La photo a été rejetée avec succès.', 'success');
-            }
-        });
-    }
+            document.getElementById('rejectForm').submit();
+            return false;
+        }
+    });
+}
 </script>
 @endpush
 @endsection

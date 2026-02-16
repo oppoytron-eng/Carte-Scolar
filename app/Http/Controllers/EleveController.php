@@ -71,7 +71,7 @@ class EleveController extends Controller
             ? $etablissement->classesActives 
             : Classe::where('is_active', true)->get();
 
-        return view('eleves.create', compact('classes'));
+        return view('proviseur.eleves.create', compact('classes'));
     }
 
     /**
@@ -125,7 +125,7 @@ class EleveController extends Controller
     {
         $eleve->load(['classe', 'etablissement', 'photos', 'cartesScolaires']);
 
-        return view('eleves.show', compact('eleve'));
+        return view('proviseur.eleves.show', compact('eleve'));
     }
 
     /**
@@ -133,9 +133,9 @@ class EleveController extends Controller
      */
     public function edit(Eleve $eleve)
     {
-        $classes = $eleve->etablissement->classesActives;
+        $classes = $eleve->etablissement?->classesActives ?? collect();
 
-        return view('eleves.edit', compact('eleve', 'classes'));
+        return view('proviseur.eleves.edit', compact('eleve', 'classes'));
     }
 
     /**
@@ -246,7 +246,7 @@ class EleveController extends Controller
 
         $eleves = $query->orderBy('nom')->orderBy('prenoms')->get();
 
-        $pdf = Pdf::loadView('eleves.exports.pdf', compact('eleves'));
+        $pdf = Pdf::loadView('eleves.exports.pdf', ['eleves' => $eleves]);
         
         return $pdf->download('eleves_' . date('Y-m-d') . '.pdf');
     }
@@ -339,11 +339,8 @@ class EleveController extends Controller
     /**
      * Valider les données d'un élève
      */
-    public function validate(Eleve $eleve)
+    public function validateEleve(Eleve $eleve)
     {
-        // Logique de validation spécifique
-        // Par exemple, vérifier que toutes les informations sont complètes
-
         $this->logAction('validate', $eleve, "Validation des données de l'élève {$eleve->nom_complet}");
 
         return redirect()->back()->with('success', 'Données validées avec succès.');

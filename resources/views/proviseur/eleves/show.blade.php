@@ -59,7 +59,7 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <p class="text-muted mb-1"><strong>Date de naissance</strong></p>
-                        <p>{{ $eleve->date_naissance->format('d/m/Y') ?? 'N/A' }}</p>
+                        <p>{{ $eleve->date_naissance ? $eleve->date_naissance->format('d/m/Y') : 'N/A' }}</p>
                     </div>
                     <div class="col-md-6">
                         <p class="text-muted mb-1"><strong>Lieu de naissance</strong></p>
@@ -117,9 +117,9 @@
                 <div class="row text-center">
                     <div class="col-md-4">
                         <h6 class="text-muted">Photo</h6>
-                        @if($eleve->photo_valid)
+                        @if($eleve->photo_valid ?? false)
                             <h3><i class="fas fa-check-circle text-success"></i></h3>
-                            <p class="small">Validée le {{ $eleve->photo_validated_at->format('d/m/Y') }}</p>
+                            <p class="small">Validée le {{ $eleve->photo_validated_at ? $eleve->photo_validated_at->format('d/m/Y') : '-' }}</p>
                         @else
                             <h3><i class="fas fa-times-circle text-danger"></i></h3>
                             <p class="small">Manquante</p>
@@ -127,9 +127,9 @@
                     </div>
                     <div class="col-md-4">
                         <h6 class="text-muted">Carte</h6>
-                        @if($eleve->carte_generee)
+                        @if($eleve->carte_generee ?? false)
                             <h3><i class="fas fa-check-circle text-info"></i></h3>
-                            <p class="small">Générée le {{ $eleve->carte_generated_at->format('d/m/Y') }}</p>
+                            <p class="small">Générée le {{ $eleve->carte_generated_at ? $eleve->carte_generated_at->format('d/m/Y') : '-' }}</p>
                         @else
                             <h3><i class="fas fa-circle text-secondary"></i></h3>
                             <p class="small">Non générée</p>
@@ -137,9 +137,9 @@
                     </div>
                     <div class="col-md-4">
                         <h6 class="text-muted">Distribution</h6>
-                        @if($eleve->carte_received)
+                        @if($eleve->carte_received ?? false)
                             <h3><i class="fas fa-check-circle text-warning"></i></h3>
-                            <p class="small">Reçue le {{ $eleve->carte_received_at->format('d/m/Y') }}</p>
+                            <p class="small">Reçue le {{ $eleve->carte_received_at ? $eleve->carte_received_at->format('d/m/Y') : '-' }}</p>
                         @else
                             <h3><i class="fas fa-circle text-secondary"></i></h3>
                             <p class="small">Pas de réception</p>

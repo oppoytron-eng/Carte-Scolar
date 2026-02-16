@@ -117,7 +117,7 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td>{{ $user->created_at->format('d/m/Y H:i') ?? 'N/A' }}</td>
+                            <td>{{ $user->created_at?->format('d/m/Y H:i') ?? 'N/A' }}</td>
                             <td>{{ $user->created_at?->format('d/m/Y') ?? 'Date inconnue' }}</td>
                             <td>{{ $user->login_count ?? 0 }}</td>
                         </tr>

@@ -18,7 +18,7 @@ class UserController extends Controller
     public function create()
     {
         $etablissements = Etablissement::where('is_active', true)->get();
-        $roles = ['Administrateur', 'Proviseur', 'Surveillant Général', 'Opérateur Photo'];
+        $roles = ['Administrateur', 'Proviseur', 'Surveillant General', 'Operateur Photo'];
         return view('admin.users.create', compact('etablissements', 'roles'));
     }
 
@@ -29,7 +29,7 @@ class UserController extends Controller
             'prenoms' => 'required|string|max:100',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|confirmed|min:8',
-            'role' => 'required|in:Administrateur,Proviseur,Surveillant Général,Opérateur Photo',
+            'role' => 'required|in:Administrateur,Proviseur,Surveillant General,Operateur Photo',
             'phone' => 'nullable|string',
             'etablissements' => 'nullable|array',
             'etablissements.*' => 'exists:etablissements,id',
@@ -45,8 +45,19 @@ class UserController extends Controller
             'is_active' => true,
         ]);
 
-        if ($request->has('etablissements') && !empty($validated['etablissements'])) {
-            $user->etablissements()->sync($validated['etablissements']);
+        if ($request->filled('etablissement_id')) {
+            $roleMapping = [
+                'Proviseur' => 'Proviseur',
+                'Surveillant General' => 'Surveillant_General',
+                'Operateur Photo' => 'Operateur_Photo',
+            ];
+            $roleEtab = $roleMapping[$validated['role']] ?? 'Operateur_Photo';
+
+            $user->etablissements()->attach($request->etablissement_id, [
+                'role_etablissement' => $roleEtab,
+                'date_debut' => now()->toDateString(),
+                'is_principal' => true,
+            ]);
         }
 
         return redirect()->route('admin.users.show', $user)->with('success', 'Utilisateur créé avec succès');
@@ -61,7 +72,7 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $etablissements = Etablissement::where('is_active', true)->get();
-        $roles = ['Administrateur', 'Proviseur', 'Surveillant Général', 'Opérateur Photo'];
+        $roles = ['Administrateur', 'Proviseur', 'Surveillant General', 'Operateur Photo'];
         $userEtablissements = $user->etablissements->pluck('id')->toArray();
         return view('admin.users.edit', compact('user', 'etablissements', 'roles', 'userEtablissements'));
     }
@@ -72,7 +83,7 @@ class UserController extends Controller
             'nom' => 'required|string|max:100',
             'prenoms' => 'required|string|max:100',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'role' => 'required|in:Administrateur,Proviseur,Surveillant Général,Opérateur Photo',
+            'role' => 'required|in:Administrateur,Proviseur,Surveillant General,Operateur Photo',
             'phone' => 'nullable|string',
             'is_active' => 'boolean',
             'etablissements' => 'nullable|array',
@@ -88,8 +99,21 @@ class UserController extends Controller
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
-        if ($request->has('etablissements')) {
-            $user->etablissements()->sync($validated['etablissements'] ?? []);
+        if ($request->filled('etablissement_id')) {
+            $roleMapping = [
+                'Proviseur' => 'Proviseur',
+                'Surveillant General' => 'Surveillant_General',
+                'Operateur Photo' => 'Operateur_Photo',
+            ];
+            $roleEtab = $roleMapping[$validated['role']] ?? 'Operateur_Photo';
+
+            $user->etablissements()->sync([
+                $request->etablissement_id => [
+                    'role_etablissement' => $roleEtab,
+                    'date_debut' => now()->toDateString(),
+                    'is_principal' => true,
+                ]
+            ]);
         }
 
         return redirect()->route('admin.users.show', $user)->with('success', 'Utilisateur mis à jour avec succès');
@@ -127,6 +151,13 @@ class UserController extends Controller
         $user->update($validated);
 
         return redirect()->back()->with('success', 'Profil mis à jour avec succès');
+    }
+
+    public function toggleStatus(User $user)
+    {
+        $user->update(['is_active' => !$user->is_active]);
+        $status = $user->is_active ? 'activé' : 'désactivé';
+        return redirect()->back()->with('success', "Utilisateur $status avec succès");
     }
 
     public function changePassword(Request $request)

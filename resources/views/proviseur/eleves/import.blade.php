@@ -118,7 +118,7 @@ Bernard,Claire,CLA003,5ème B,05/03/2013</code></pre>
                 @forelse($imports ?? [] as $import)
                 <div class="mb-3 pb-3 border-bottom">
                     <p class="mb-1">
-                        <strong>{{ $import->created_at->format('d/m/Y H:i') }}</strong>
+                        <strong>{{ $import->created_at?->format('d/m/Y H:i') ?? '-' }}</strong>
                     </p>
                     <p class="mb-1 text-muted">
                         <i class="fas fa-check text-success"></i> {{ $import->success_count }} élèves importés

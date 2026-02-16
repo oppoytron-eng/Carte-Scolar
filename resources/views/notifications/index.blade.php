@@ -4,7 +4,7 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3>Mes Notifications</h3>
-        <form action="{{ route('notifications.markAllAsRead') }}" method="POST">
+        <form action="{{ route('notifications.mark-all-as-read') }}" method="POST">
             @csrf
             <button type="submit" class="btn btn-sm btn-primary">Tout marquer comme lu</button>
         </form>

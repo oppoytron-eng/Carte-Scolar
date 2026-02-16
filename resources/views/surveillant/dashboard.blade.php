@@ -94,9 +94,18 @@
                 <a href="{{ route('surveillant.impression.batch') }}" class="btn btn-success">
                     <i class="fas fa-print me-2"></i> Impression en masse
                 </a>
-                <a href="{{ route('surveillant.rapports.classe') }}" class="btn btn-outline-primary">
-                    <i class="fas fa-file-pdf me-2"></i> Rapport de classe
-                </a>
+                @if(isset($classes) && $classes->count())
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-file-pdf me-2"></i> Rapport de classe
+                    </button>
+                    <ul class="dropdown-menu">
+                        @foreach($classes as $classe)
+                            <li><a class="dropdown-item" href="{{ route('surveillant.rapports.classe', $classe) }}">{{ $classe->nom }}</a></li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
             </div>
         </div>
     </div>
